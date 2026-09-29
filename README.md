@@ -68,3 +68,7 @@ Built with Claude.
 ## License
 
 Copyright © 2026 Uta Knablein. All rights reserved. The demo code is shared for viewing and evaluation; see [LICENSE](LICENSE).
+
+## Privacy
+
+The demo counts page visits and button clicks with [GoatCounter](https://www.goatcounter.com), an open-source, cookie-free analytics service that collects no personal data. Text you paste into the demo is never sent anywhere.

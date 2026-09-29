@@ -606,5 +606,14 @@ document.getElementById("claude").addEventListener("click", async () => {
     : "Opening Claude. If the message box is empty, copy your proposal and the prompt from the README.";
 });
 </script>
+<script data-goatcounter="https://utaknablein.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<script>
+  // Count key actions as events in GoatCounter (no cookies, no personal data)
+  function gcEvent(name) { try { window.goatcounter && window.goatcounter.count({ path: name, title: name, event: true }); } catch (e) {} }
+  document.getElementById("run").addEventListener("click", () => gcEvent("bda-instant-challenge"));
+  document.getElementById("claude").addEventListener("click", () => gcEvent("bda-run-in-claude"));
+  document.getElementById("example").addEventListener("click", () => gcEvent("bda-load-example"));
+  document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => gcEvent("bda-sample-" + t.dataset.id)));
+</script>
 </body>
 </html>
