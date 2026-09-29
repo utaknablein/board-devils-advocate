@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board Devil's Advocate</title>
+<meta name="description" content="An independent AI challenger that tests every board proposal before the meeting. Demo by Uta Knablein.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f7f4ee;
+    --card: #ffffff;
+    --ink: #1c1a17;
+    --muted: #6b655c;
+    --line: #e2ddd3;
+    --accent: #7a1f2b;
+    --accent-soft: #f3e3e5;
+    --high: #9b1c2c;
+    --high-bg: #f8e1e3;
+    --med: #8a5a00;
+    --med-bg: #fbeed3;
+    --low: #2f6b4f;
+    --low-bg: #e0f0e7;
+    --shadow: 0 1px 2px rgba(28,26,23,.06), 0 4px 16px rgba(28,26,23,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #151412;
+      --card: #1e1c19;
+      --ink: #eeeae3;
+      --muted: #a39d93;
+      --line: #34312c;
+      --accent: #e0707e;
+      --accent-soft: #3a2226;
+      --high: #f08a96;
+      --high-bg: #3d2226;
+      --med: #e9b85c;
+      --med-bg: #3a3020;
+      --low: #7fcca5;
+      --low-bg: #1f3329;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #151412; --card: #1e1c19; --ink: #eeeae3; --muted: #a39d93; --line: #34312c;
+    --accent: #e0707e; --accent-soft: #3a2226; --high: #f08a96; --high-bg: #3d2226;
+    --med: #e9b85c; --med-bg: #3a3020; --low: #7fcca5; --low-bg: #1f3329; --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.55 Inter, system-ui, -apple-system, sans-serif;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  h1, h2, h3 { font-family: Fraunces, Georgia, serif; font-weight: 600; line-height: 1.2; margin: 0; }
+  header.hero { padding: 56px 0 32px; border-bottom: 1px solid var(--line); }
+  .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: 12px; font-weight: 600; color: var(--accent); }
+  .hero h1 { font-size: clamp(34px, 6vw, 56px); margin: 10px 0 14px; }
+  .hero p.lede { font-size: 19px; color: var(--muted); max-width: 680px; margin: 0; }
+  .principles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--muted); background: var(--card); }
+
+  section { padding: 40px 0; }
+  .section-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .section-head h2 { font-size: 28px; }
+  .section-head p { color: var(--muted); margin: 6px 0 0; max-width: 620px; }
+
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .tab {
+    font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    padding: 8px 14px; border-radius: 8px;
+  }
+  .tab[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+  .proposal { padding: 22px; position: sticky; top: 16px; }
+  @media (max-width: 860px) { .proposal { position: static; } }
+  .proposal .label { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+  .proposal h3 { font-size: 21px; margin: 6px 0 12px; }
+  .proposal dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; }
+  .proposal dt { color: var(--muted); }
+  .proposal dd { margin: 0; font-weight: 500; }
+  .proposal .ask { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; }
+  .proposal .ask p { margin: 4px 0 0; }
+
+  .brief { padding: 26px; }
+  .brief-top { display: flex; gap: 16px; justify-content: space-between; align-items: start; flex-wrap: wrap; }
+  .brief-top > div:first-child { flex: 1 1 360px; }
+  .brief-top .label { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); font-weight: 600; }
+  .headline { font-family: Fraunces, Georgia, serif; font-size: 22px; line-height: 1.35; margin: 8px 0 0; max-width: 620px; }
+  .intensity { text-align: right; flex-shrink: 0; }
+  .intensity .v { font-family: Fraunces, Georgia, serif; font-size: 22px; font-weight: 600; color: var(--accent); }
+  .intensity .k { font-size: 12px; color: var(--muted); }
+
+  .lenses { display: grid; gap: 12px; margin-top: 22px; }
+  .lens { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .lens-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .lens-head h4 { margin: 0; font-size: 15px; font-weight: 600; }
+  .lens-head h4 span { color: var(--muted); font-weight: 500; margin-right: 6px; }
+  .sev { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+  .sev.High { color: var(--high); background: var(--high-bg); }
+  .sev.Medium { color: var(--med); background: var(--med-bg); }
+  .sev.Low { color: var(--low); background: var(--low-bg); }
+  .lens p { margin: 8px 0 0; font-size: 15px; }
+  .lens .q { margin-top: 10px; padding: 10px 12px; background: var(--accent-soft); border-radius: 8px; font-size: 14px; }
+  .lens .q b { color: var(--accent); font-weight: 600; margin-right: 4px; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+  .two h4 { margin: 0 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .two ul { margin: 0; padding-left: 18px; font-size: 14px; }
+  .two li { margin-bottom: 6px; }
+  .box { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 18px; }
+
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 860px) { .steps { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } }
+  .step { padding: 20px; }
+  .step .n { font-family: Fraunces, Georgia, serif; font-size: 28px; color: var(--accent); }
+  .step h3 { font-size: 18px; margin: 6px 0 6px; }
+  .step p { margin: 0; font-size: 14px; color: var(--muted); }
+
+  .live { padding: 24px; }
+  .live label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+  .live textarea, .live input, .live select {
+    width: 100%; font: inherit; font-size: 14px; color: var(--ink); background: var(--paper);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+  }
+  .live textarea { min-height: 180px; resize: vertical; }
+  .row { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+  .btn {
+    margin-top: 16px; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer;
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 11px 20px;
+  }
+  .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .live-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .live-head label { margin-top: 0; }
+  .link { font: inherit; font-size: 13px; background: none; border: 0; color: var(--accent); cursor: pointer; text-decoration: underline; padding: 0; }
+  .status { font-size: 14px; color: var(--muted); margin: 12px 0 0; min-height: 1em; }
+  #live-out { margin-top: 20px; }
+
+  .ledger { padding: 24px; }
+  .ledger table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .ledger th, .ledger td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .ledger th { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; min-width: 80px; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .table-scroll { overflow-x: auto; }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--muted); font-size: 14px; }
+  footer a { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Governance concept · Working demo</div>
+    <h1>Board Devil's Advocate</h1>
+    <p class="lede">An independent AI challenger that tests every board proposal before the meeting, so directors walk in with the hard questions already on the table.</p>
+    <div class="principles">
+      <span class="pill">Challenges reasoning, never people</span>
+      <span class="pill">Never recommends the vote</span>
+      <span class="pill">Independent of the sponsor</span>
+      <span class="pill">Same eight lenses, every time</span>
+    </div>
+  </div>
+</header>
+
+<main>
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <h2>See a challenge brief</h2>
+        <p>Three fictional proposals, each challenged through the same eight lenses. This is what a director would receive alongside the board pack.</p>
+      </div>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="grid">
+      <aside class="card proposal" id="proposal"></aside>
+      <article class="card brief" id="brief"></article>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <h2>How it works</h2>
+        <p>The challenger sits between management and the board. It reads the paper, not the room.</p>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="card step"><div class="n">1</div><h3>Intake</h3><p>The company secretary submits the proposal when the board pack is locked. Management cannot edit the brief.</p></div>
+      <div class="card step"><div class="n">2</div><h3>Challenge</h3><p>Eight fixed lenses: premise, outside view, evidence, alternatives, downside, incentives, execution, pre-mortem.</p></div>
+      <div class="card step"><div class="n">3</div><h3>Brief</h3><p>Directors receive findings, the questions to ask in the room, and conditions a prudent board might attach.</p></div>
+      <div class="card step"><div class="n">4</div><h3>Learn</h3><p>Decisions and outcomes are logged. Over time the challenger surfaces patterns across this board's own history.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <h2>Where it goes: pattern memory</h2>
+        <p>The enterprise product remembers. After enough decisions, it can tell a board how its own past approvals of this type actually turned out. The figures below are illustrative, to show the shape of the insight.</p>
+      </div>
+    </div>
+    <div class="card ledger">
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>Pattern across past decisions</th><th>Seen</th><th>Outcome vs. plan</th><th style="width:22%">Strength</th></tr></thead>
+        <tbody id="ledger"></tbody>
+      </table>
+      </div>
+      <p class="note">Illustrative data. In production these patterns are computed only from the client board's own decision ledger and never shared across clients.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <h2>Try it on your own proposal</h2>
+        <p>No sign-up and no API key. The instant brief runs entirely in your browser; nothing you paste leaves this page. For the full AI challenge, send the proposal to Claude in your own account.</p>
+      </div>
+    </div>
+    <div class="card live">
+      <div class="live-head">
+        <label for="p-text">Proposal</label>
+        <button class="link" id="example" type="button">Load an example</button>
+      </div>
+      <textarea id="p-text" placeholder="What is being proposed, the ask, the numbers, the timeline, who owns it, and why now."></textarea>
+      <div class="actions">
+        <button class="btn" id="run" type="button">Challenge instantly</button>
+        <button class="btn ghost" id="claude" type="button">Run the full challenge in Claude</button>
+      </div>
+      <p class="status" id="status"></p>
+      <div id="live-out"></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    Board Devil's Advocate is a concept by <a href="https://github.com/utaknablein">Uta Knablein</a>. The demo proposals and companies are fictional.
+    The challenger informs directors; it never makes the decision.
+  </div>
+</footer>
+
+<script>
+const LENSES = ["Premise","Outside view","Evidence","Alternatives","Downside","Incentives","Execution","Pre-mortem"];
+
+const SAMPLES = [
+  {
+    id: "acq",
+    tab: "Acquisition",
+    title: "Acquire Northwind Analytics",
+    facts: [["Sponsor","CEO and CFO"],["Ask","$420M, cash and stock"],["Valuation","9.3x ARR"],["Synergies","$38M run-rate by year 2"],["Deadline","Exclusivity ends in 21 days"]],
+    summary: "Management proposes acquiring a mid-market SaaS analytics company to accelerate the platform strategy. The case rests on cross-selling into our installed base and consolidating overlapping engineering.",
+    brief: {
+      headline: "The price is only defensible if the revenue synergies arrive, and nothing in the paper shows they were tested with customers rather than modeled.",
+      intensity: "High",
+      lenses: [
+        {severity:"High", finding:"Roughly 60% of the $38M synergy figure is cross-sell revenue. The paper assumes 18% of our top accounts adopt Northwind within two years but cites no customer conversations, pilots or pipeline.", question:"How many of our top 50 customers have seen Northwind, and how many said they would buy it?"},
+        {severity:"High", finding:"As a general pattern, revenue synergies in acquisitions are realized less reliably than cost synergies. The proposal does not say why this deal should beat that pattern.", question:"What is our own track record on the last three acquisitions' synergy targets?"},
+        {severity:"Medium", finding:"The financial model and the fairness view both come from advisers whose fees are largely contingent on completion. Diligence on churn covers only the last four quarters.", question:"Has anyone without a success fee reviewed the synergy model?"},
+        {severity:"Medium", finding:"A commercial partnership or minority stake is dismissed in one sentence. Building the capability internally is not costed at all.", question:"What would an 18-month partnership with an option to acquire cost us, and what would we learn?"},
+        {severity:"High", finding:"If cross-sell underperforms by half, the deal still carries full integration cost and a likely goodwill impairment within three years. The stock component dilutes existing shareholders regardless.", question:"What does year three look like if synergies come in at 40% of plan?"},
+        {severity:"Medium", finding:"The 21-day exclusivity window was agreed by management before the board saw the paper. Deadline pressure is doing some of the persuading.", question:"Who set the deadline, and what happens if we ask for 30 more days?"},
+        {severity:"Medium", finding:"Integration is owned by the same leadership team running this year's ERP migration. No integration budget line appears separately from synergies.", question:"Which current priority slips to make room for this integration?"},
+        {severity:"Low", finding:"The most likely failure story: key Northwind engineers leave within a year, the product stalls, and our sales team never builds the motion to sell it.", question:"What retention is in place for Northwind's top 20 engineers, and for how long?"}
+      ],
+      conditions: ["Approve subject to at least ten documented customer validation conversations before signing.","Split synergy targets into cost and revenue, with named owners and a board review at 12 months.","Require a retention package for key technical staff as a closing condition.","Set a walk-away price, agreed now, that holds if diligence findings move."],
+      changeMind: ["Signed letters of intent from existing customers to buy Northwind.","Evidence of our own prior acquisitions hitting their revenue synergy targets.","An independent quality-of-earnings report extending churn analysis to three years."]
+    }
+  },
+  {
+    id: "ai",
+    tab: "AI service agent",
+    title: "Deploy an AI customer-service agent across all channels",
+    facts: [["Sponsor","COO"],["Ask","$14M over 18 months"],["Savings","40% contact-center cost by month 12"],["Scope","Voice, chat, email, all markets"],["Vendor","Single platform provider"]],
+    summary: "Management proposes replacing first-line customer service with an AI agent across every channel and market at once, reducing contact-center headcount by 40% within a year.",
+    brief: {
+      headline: "The savings case is sized for full replacement, but the only evidence comes from a six-week chat pilot on the simplest queries in one market.",
+      intensity: "High",
+      lenses: [
+        {severity:"High", finding:"The 40% figure extrapolates a pilot that handled password resets and order tracking in English chat. Voice and complaints, the costliest contacts, were not piloted.", question:"What share of our contact cost sits in the query types the pilot actually covered?"},
+        {severity:"Medium", finding:"Large service automation programs commonly see containment rates fall once they move from simple to complex contacts. The paper assumes pilot rates hold everywhere.", question:"What containment rate did the pilot achieve on escalations and complaints?"},
+        {severity:"High", finding:"Pilot metrics were reported by the vendor. Customer satisfaction was measured only for contacts the agent resolved, excluding customers who abandoned or escalated.", question:"What was satisfaction across all customers who entered the pilot, including those who gave up?"},
+        {severity:"Medium", finding:"A phased rollout by channel and market is not presented. Nor is augmenting agents rather than replacing them.", question:"What does the case look like if we automate chat in two markets first and decide on voice after six months?"},
+        {severity:"High", finding:"Headcount reductions are hard to reverse. If the agent underperforms, rehiring and retraining would take many months, and complaint handling carries regulatory and reputational exposure in several markets.", question:"What is our fallback if complaint volumes rise 30% in the first quarter after launch?"},
+        {severity:"Medium", finding:"Savings are booked in the COO's cost target for next year. The vendor's pricing includes a volume discount that expires if we phase.", question:"Would we choose the same scope if the vendor's discount did not depend on it?"},
+        {severity:"Medium", finding:"Knowledge-base cleanup, which the agent depends on, is listed as a dependency with no owner or budget.", question:"Who owns the knowledge base, and is its cost inside the $14M?"},
+        {severity:"Low", finding:"Most likely failure story: the agent handles easy contacts well, hard contacts pile up on a smaller human team, service levels drop, and churn erases the savings.", question:"How will we measure churn attributable to the change, and who reports it to the board?"}
+      ],
+      conditions: ["Phase by channel, starting with chat, with a go or no-go gate reviewed by the board.","Report satisfaction and churn for all contacts, not only resolved ones.","Tie headcount reductions to demonstrated containment, not to calendar dates.","Obtain a regulatory view on automated complaint handling in each market before launch."],
+      changeMind: ["A voice and complaints pilot showing containment near the modeled rate.","Independent measurement of pilot outcomes rather than vendor-reported figures.","Vendor pricing that holds under a phased rollout."]
+    }
+  },
+  {
+    id: "dach",
+    tab: "Market entry",
+    title: "Enter the German market through a direct sales subsidiary",
+    facts: [["Sponsor","Chief Revenue Officer"],["Ask","EUR 22M over 3 years"],["Target","EUR 30M ARR by year 3"],["Model","Own entity, 45 hires"],["Launch","Q1 next year"]],
+    summary: "Management proposes opening a German subsidiary with its own sales, service and legal presence to capture mid-market demand, replicating the US go-to-market playbook.",
+    brief: {
+      headline: "The plan imports the US sales motion into a market with different buying cycles, works council obligations and data expectations, and it does not show evidence that the motion transfers.",
+      intensity: "Elevated",
+      lenses: [
+        {severity:"High", finding:"The revenue ramp assumes US sales-cycle lengths. Mid-market German buyers often involve more stakeholders, and the paper does not test this with local prospects.", question:"How many German prospects have we taken through a full evaluation, and how long did it take?"},
+        {severity:"Medium", finding:"Many companies expanding into Germany take longer than planned to reach break-even. The proposal does not name what gives us an advantage over that pattern.", question:"Which comparable companies entered successfully, and what did they do that we plan to copy?"},
+        {severity:"Medium", finding:"Market sizing comes from a single analyst report. Current German revenue, which is small but real, is not analyzed by segment or win rate.", question:"What does our existing German customer base tell us about who actually buys?"},
+        {severity:"High", finding:"A partner-led or reseller entry, which would test demand before fixed costs, is not presented.", question:"What would a 12-month partner-led test cost, and what would it prove?"},
+        {severity:"Medium", finding:"Employment obligations, including works council involvement once headcount grows, make a later retreat slower and costlier than in the US.", question:"What does an orderly exit in year two cost, including employment obligations?"},
+        {severity:"Low", finding:"The CRO's compensation includes an international bookings component. This is normal but worth naming.", question:"How are international targets weighted in the sponsor's incentive plan?"},
+        {severity:"Medium", finding:"Data residency and hosting requirements expected by German customers are listed as a later-phase item, yet the sales plan assumes selling to regulated industries from launch.", question:"Can we sell to regulated German customers on day one with our current hosting?"},
+        {severity:"Low", finding:"Most likely failure story: hiring runs ahead of pipeline, the first year produces pilots rather than contracts, and the subsidiary is quietly downsized in year two.", question:"What leading indicators at month six would tell us to slow hiring?"}
+      ],
+      conditions: ["Stage hiring against pipeline milestones rather than a fixed headcount plan.","Resolve the data-hosting question before sales to regulated sectors.","Appoint a local managing director with German mid-market experience before scaling.","Review a partner-led alternative alongside this plan at the next meeting."],
+      changeMind: ["Signed pilots or contracts with German mid-market customers.","Analysis of existing German customers showing US-like cycle lengths.","A credible local leader already identified and committed."]
+    }
+  }
+];
+
+const LEDGER = [
+  ["Acquisitions approved under a deadline set by the seller", "7", "Synergies at 52% of plan on average", 82],
+  ["Programs where the sponsor also owned the savings target", "11", "Benefits delivered 9 months late on average", 71],
+  ["Proposals with no alternative option presented", "14", "3x more likely to return for extra funding", 64],
+  ["Pilots extrapolated to full scope without a second pilot", "6", "Scaled results 38% below pilot results", 58]
+];
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function renderBrief(b, note) {
+  const lenses = b.lenses.map((l, i) => `
+    <div class="lens">
+      <div class="lens-head"><h4><span>${String(i+1).padStart(2,"0")}</span>${esc(l.lens || LENSES[i])}</h4><span class="sev ${esc(l.severity)}">${esc(l.severity)}</span></div>
+      <p>${esc(l.finding)}</p>
+      <div class="q"><b>Ask in the room:</b>${esc(l.question)}</div>
+    </div>`).join("");
+  return `
+    <div class="brief-top">
+      <div><div class="label">Challenge brief</div><p class="headline">${esc(b.headline)}</p></div>
+      <div class="intensity"><div class="v">${esc(b.intensity)}</div><div class="k">Challenge intensity</div></div>
+    </div>
+    <div class="lenses">${lenses}</div>
+    <div class="two">
+      <div class="box"><h4>Conditions a prudent board might attach</h4><ul>${b.conditions.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></div>
+      <div class="box"><h4>What would change this analysis</h4><ul>${b.changeMind.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></div>
+    </div>
+    <p class="note">${note ? esc(note) + " " : ""}The challenger does not recommend approval or rejection. The decision belongs to the board.</p>`;
+}
+
+function show(id) {
+  const s = SAMPLES.find(x => x.id === id);
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.id === id));
+  document.getElementById("proposal").innerHTML = `
+    <div class="label">Proposal to the board</div>
+    <h3>${esc(s.title)}</h3>
+    <dl>${s.facts.map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    <div class="ask"><b>Summary</b><p>${esc(s.summary)}</p></div>`;
+  document.getElementById("brief").innerHTML = renderBrief(s.brief);
+}
+
+document.getElementById("tabs").innerHTML = SAMPLES.map(s =>
+  `<button class="tab" role="tab" data-id="${s.id}">${esc(s.tab)}</button>`).join("");
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => show(t.dataset.id)));
+show("acq");
+
+document.getElementById("ledger").innerHTML = LEDGER.map(([p,n,o,w]) =>
+  `<tr><td>${esc(p)}</td><td>${esc(n)}</td><td>${esc(o)}</td><td><div class="bar"><i style="width:${w}%"></i></div></td></tr>`).join("");
+
+/* ---------- Instant challenge engine (runs in the browser, no AI, no key) ---------- */
+
+const TYPES = [
+  { id: "acquisition", re: /\b(acquir\w*|acquisition|merger|takeover|M&A|buy(ing)? (the )?(company|business))\b/i,
+    outside: "Acquisitions are a reference class where planned synergies, especially revenue synergies, are often delivered later and smaller than modeled. The paper does not say why this deal should do better than that general pattern.",
+    premortem: "Integration takes longer than planned, key people from the acquired company leave, and the synergies that justified the price never fully arrive.",
+    condition: "Split synergy targets into cost and revenue, each with a named owner and a board review at 12 months." },
+  { id: "ai", re: /\b(AI|artificial intelligence|automat\w*|machine learning|chatbot|copilot|LLM)\b/,
+    outside: "Automation programs often look strongest in pilots on simple, high-volume work and weaker once they reach complex or exceptional cases. The paper does not show how results hold outside the easy cases.",
+    premortem: "The system handles routine work well, complex cases pile up on a smaller human team, quality drops, and customers or regulators notice before the savings show.",
+    condition: "Scale in phases with a go or no-go gate, and tie any headcount changes to demonstrated results rather than calendar dates." },
+  { id: "tech", re: /\b(ERP|SAP|migration|replatform\w*|re-platform\w*|system replacement|core system|cloud|platform)\b/i,
+    outside: "Large system programs are a reference class known for running over budget and over time, often because scope grows and business readiness lags the technology. The paper does not explain what protects this program from that pattern.",
+    premortem: "Scope grows during design, the cutover date slips twice, the business runs two systems in parallel for a year, and the benefits case is quietly rebased.",
+    condition: "Fund in stages against design and readiness milestones rather than approving the full budget up front." },
+  { id: "market", re: /\b(market entry|enter(ing)? (the )?\w+ market|new market|expan(d|sion|ding) (into|to)|international|subsidiary|launch in)\b/i,
+    outside: "Companies entering new markets often find sales cycles, buying habits and regulation differ more than expected, and break-even arrives later than planned. The paper does not show evidence that the home-market playbook transfers.",
+    premortem: "Hiring runs ahead of pipeline, the first year produces pilots rather than contracts, and the new unit is quietly downsized in year two.",
+    condition: "Stage hiring and spend against pipeline milestones rather than a fixed plan." },
+  { id: "capex", re: /\b(facilit(y|ies)|plants?|factor(y|ies)|warehouses?|distribution cent(er|re)s?|data cent(er|re)s?|headquarters|office move|capex|capital expenditure|construction|new site)\b/i,
+    outside: "Major capital projects frequently exceed their budget and schedule, and the demand forecasts behind them are often optimistic. The paper does not test its demand assumptions against a downside case.",
+    premortem: "Construction runs late and over budget, demand comes in below forecast, and the asset sits underused while its fixed costs weigh on margins.",
+    condition: "Approve with a cost and schedule contingency reported to the board quarterly, and a demand review before the final commitment." },
+  { id: "reorg", re: /\b(restructur\w*|reorgani[sz]\w*|redundanc\w*|layoffs?|operating model|transformation)\b/i,
+    outside: "Restructurings often deliver cost savings faster than they deliver the intended performance improvement, and can cost capability that is hard to rebuild. The paper does not show how capability will be protected.",
+    premortem: "Costs fall on schedule, but the people who knew how things really worked leave, execution slows, and the organization spends the savings rebuilding.",
+    condition: "Identify critical roles and knowledge before any reductions, with retention in place for them." }
+];
+const GENERIC_TYPE = {
+  outside: "The paper does not place this decision against how similar decisions usually turn out, inside or outside the company. Without that reference point, the plan is being judged only against itself.",
+  premortem: "The core assumption proves optimistic, the timeline slips, and by the time the gap is visible the organization is too committed to change course cheaply.",
+  condition: "Set two or three measurable milestones now, with a board review if any is missed."
+};
+
+const RX = {
+  source: /\b(pilot|survey|study|analysis|research|audit|benchmark|customer (interviews?|conversations?|feedback)|validated|diligence|data from|based on)\b/i,
+  thirdParty: /\b(vendor|advis[eo]rs?|consultants?|consultancy|bankers?|provider|agency|partner firm)\b/i,
+  pilot: /\b(pilot|trial|proof of concept|POC|test(ed)? in)\b/i,
+  alternatives: /\b(alternatives?|options? (considered|we considered|reviewed)|instead of|phased|in phases|partnership|partner-led|smaller|defer|do nothing|compared (with|to)|versus|vs\.?)\b/i,
+  risk: /\b(risks?|downside|fallback|contingency|exit|mitigat\w*|worst case|sensitivity|scenario)\b/i,
+  irreversible: /\b(headcount|layoffs?|redundanc\w*|reduce (staff|jobs|headcount)|close|shut|divest|long-term contract|multi-year|lease|exclusiv\w*|irrevocable)\b/i,
+  bigScope: /\b(all (markets|channels|regions|sites|countries|business units)|global(ly)?|big[- ]bang|at once|simultaneous\w*|enterprise-wide|company-wide|across (every|all))\b/i,
+  urgency: /\b(deadline|expires?|exclusivity|window|urgent|before (the )?(end|year|quarter)|by Q[1-4]|now or never|first[- ]mover|competitors? (are|will)|time-sensitive|in \d+ days)\b/i,
+  incentive: /\b(bonus|incentive|commission|discount|success fee|target(s)?)\b/i,
+  owner: /\b(owner|owned by|accountable|led by|lead|oversee\w*|program director|responsible|sponsor|CEO|CFO|COO|CTO|CIO|CRO|Chief \w+ Officer)\b/i,
+  capacity: /\b(capacity|resourc\w*|team of|hires?|hiring|backfill|dedicated)\b/i,
+  concurrent: /\b(while|alongside|in parallel|same team|also (running|leading)|at the same time)\b/i,
+  savings: /\b(sav(e|es|ing|ings)|synerg\w*|cost reduction|efficienc\w*|ROI|payback)\b/i
+};
+
+function figures(t) {
+  const m = t.match(/(?:[$€£]\s?\d[\d,.]*\s?(?:bn|m|k|million|billion|[MBK])?\b|\b\d[\d,.]*\s?%|\b\d[\d,.]*\s?x\b|\b\d[\d,.]*\s?(?:million|billion)\b)/gi) || [];
+  return [...new Set(m.map(s => s.trim()))].slice(0, 4);
+}
+
+function challenge(text) {
+  const t = " " + text.replace(/\s+/g, " ") + " ";
+  const has = k => RX[k].test(t);
+  const score = x => (t.match(new RegExp(x.re.source, x.re.flags.includes("i") ? "gi" : "g")) || []).length;
+  const ranked = TYPES.map(x => [x, score(x)]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  const type = ranked.length ? ranked[0][0] : GENERIC_TYPE;
+  const nums = figures(t);
+  const numList = nums.length ? nums.join(", ") : "";
+  const L = [];
+  const conditions = [];
+  const changeMind = [];
+
+  // 1 Premise
+  if (nums.length && !has("source")) {
+    L.push({ severity: "High", finding: `The case rests on figures such as ${numList}, but the paper does not say where they come from or what they assume. As written, the central numbers are asserted rather than evidenced.`, question: "Which single assumption, if it proved wrong, would break this case, and what evidence supports it today?" });
+    changeMind.push("A clear source and method for each of the headline figures.");
+  } else if (!nums.length) {
+    L.push({ severity: "High", finding: "The proposal contains no quantified costs, benefits or targets. Without numbers, the board cannot judge whether the premise holds or later tell whether it worked.", question: "What are the three numbers by which we will judge success, and what are their values today?" });
+    conditions.push("Require quantified costs, benefits and success measures before a final decision.");
+  } else {
+    L.push({ severity: "Medium", finding: `The paper cites supporting work for figures such as ${numList}. The open question is whether that evidence covers the conditions the full plan will face, not only the ones already tested.`, question: "What must be true for these numbers to hold at full scale, and which of those things have we actually observed?" });
+  }
+
+  // 2 Outside view
+  L.push({ severity: "Medium", finding: type.outside, question: "How did our own last two or three decisions of this kind perform against their original plans?" });
+  changeMind.push("Evidence from our own history that decisions of this type have met their plans.");
+
+  // 3 Evidence
+  if (has("thirdParty") && has("pilot")) {
+    L.push({ severity: "High", finding: "Key evidence appears to come from a pilot and from a third party, such as a vendor or adviser, who benefits if the proposal is approved. The paper does not say whether anyone independent reviewed the results.", question: "Who measured the pilot results, and has anyone without a stake in approval checked them?" });
+    changeMind.push("Pilot results measured or reviewed by someone independent of the vendor and the sponsor.");
+  } else if (has("thirdParty")) {
+    L.push({ severity: "Medium", finding: "External parties such as vendors, advisers or bankers appear in the proposal. Their analysis may be sound, but their fees or future work may depend on approval, and the paper does not address this.", question: "Which parts of this analysis came from parties who are paid more if we approve?" });
+  } else if (has("pilot")) {
+    L.push({ severity: "Medium", finding: "The proposal relies on a pilot. Pilots are usually run on favorable cases with extra attention, and the paper does not show how representative this one was.", question: "How was the pilot scope chosen, and what share of the full workload did it cover?" });
+    changeMind.push("A second, harder pilot that reproduces the first one's results.");
+  } else {
+    L.push({ severity: "Medium", finding: "The paper does not describe who produced the analysis or how it was checked. The board is being asked to rely on work it cannot see.", question: "Who built the business case, and who outside the sponsoring team has reviewed it?" });
+  }
+
+  // 4 Alternatives
+  if (!has("alternatives")) {
+    L.push({ severity: "High", finding: "Only one option is presented. There is no phased version, smaller bet, partnership, delay or do-nothing case for the board to compare against, which makes the proposal hard to judge on its merits.", question: "What is the best alternative management rejected, and why?" });
+    conditions.push("Ask management to present at least one credible alternative, such as a phased or smaller version, alongside this plan.");
+  } else {
+    L.push({ severity: "Low", finding: "The proposal mentions alternatives. The board may still want to check that they were developed seriously rather than included to be dismissed.", question: "Were the alternatives costed with the same care as the recommended option?" });
+  }
+
+  // 5 Downside
+  const irrev = has("irreversible"), big = has("bigScope"), risk = has("risk");
+  if (irrev || big) {
+    const why = [irrev && "commitments that are hard to reverse", big && "a scope that applies everywhere at once"].filter(Boolean).join(" and ");
+    L.push({ severity: "High", finding: `The plan involves ${why}. If the core assumption is wrong, unwinding it would be slow and expensive${risk ? ", and the risk section does not fully price this" : ", and the paper does not describe a fallback"}.`, question: "If this goes badly, what is our exit, what does it cost, and how quickly could we take it?" });
+    conditions.push(big ? "Phase the rollout, with a board-reviewed gate before each expansion." : "Define an exit or fallback plan, with its cost, before committing.");
+  } else if (!risk) {
+    L.push({ severity: "Medium", finding: "The paper has no risk, downside or fallback section. The board cannot see what the worst plausible outcome is or how reversible the decision would be.", question: "What is the worst plausible outcome, and what would it cost us?" });
+    conditions.push("Add a downside scenario and a fallback plan to the paper.");
+  } else {
+    L.push({ severity: "Low", finding: "Risks are acknowledged. The board may want to test whether the downside case is genuinely pessimistic or a slightly reduced version of the plan.", question: "What does our downside scenario assume, and how likely do we think it is?" });
+  }
+
+  // 6 Incentives
+  if (has("urgency")) {
+    L.push({ severity: "Medium", finding: "The proposal carries time pressure, such as a deadline, window or competitive threat. Urgency is sometimes real and sometimes created, and it tends to shorten scrutiny either way.", question: "Who set this deadline, and what actually happens if we take 30 more days?" });
+    changeMind.push("Evidence that the deadline is external and cannot be extended.");
+  } else if (has("incentive")) {
+    L.push({ severity: "Low", finding: "The proposal refers to targets, discounts or incentives. This is normal, but the board should know whose targets or rewards depend on approval.", question: "Whose targets or incentives are affected by this decision?" });
+  } else {
+    L.push({ severity: "Low", finding: "No obvious urgency or incentive pressure appears in the paper. It is still worth confirming who benefits from approval and why the proposal is coming now.", question: "Why is this coming to the board now rather than next quarter?" });
+  }
+
+  // 7 Execution
+  if (has("owner") && has("concurrent")) {
+    L.push({ severity: "Medium", finding: "Delivery appears to sit with a leader who is running other major work at the same time. The paper does not show how that load will be managed or what gives if both run late.", question: "What else is this leader delivering this year, and what slips if both run late?" });
+    conditions.push("Confirm a dedicated delivery lead and what current work is deprioritized.");
+  } else if (!has("owner") || !has("capacity")) {
+    L.push({ severity: "Medium", finding: `The paper does not clearly name ${!has("owner") ? "a single accountable owner" : "the team and capacity needed to deliver"}. Plans without this tend to compete quietly with existing priorities.`, question: "Who is personally accountable for delivery, and what are they stopping to make room for it?" });
+    conditions.push("Name one accountable executive and confirm what current work is deprioritized.");
+  } else if (has("concurrent")) {
+    L.push({ severity: "Medium", finding: "Delivery appears to run alongside other major work by the same people. The paper does not show how the load will be managed.", question: "What else is this team delivering this year, and what slips if both run late?" });
+  } else {
+    L.push({ severity: "Low", finding: "An owner and resourcing are described. The board may want to confirm the plan's capacity assumptions with the people who will do the work.", question: "Have the delivery teams reviewed and agreed to this timeline?" });
+  }
+
+  // 8 Pre-mortem
+  L.push({ severity: "Low", finding: `Most likely failure story: ${type.premortem.charAt(0).toLowerCase() + type.premortem.slice(1)}`, question: "What early warning signs would tell us within six months that this story is unfolding?" });
+  conditions.push(type.condition);
+
+  L.forEach((l, i) => l.lens = LENSES[i]);
+  const highs = L.filter(l => l.severity === "High").length;
+  const intensity = highs >= 3 ? "High" : highs >= 1 ? "Elevated" : "Moderate";
+  const top = L.find(l => l.severity === "High") || L.find(l => l.severity === "Medium");
+  const HEAD = {
+    Premise: "The board should test whether the central numbers are evidenced or assumed before debating anything else.",
+    Evidence: "The board should test who produced the key evidence, and whether anyone without a stake in approval has checked it.",
+    Alternatives: "The board is being shown one option; before judging it, ask what the best alternative would have been.",
+    Downside: "The board should test the exit before the entrance: this decision would be hard and costly to reverse.",
+    "Outside view": "The board should test why this decision would beat the usual outcome for decisions of its kind."
+  };
+  const headline = (top && HEAD[top.lens]) || "The proposal is reasonably complete; the board's main job is to confirm the assumptions behind the numbers.";
+
+  return {
+    headline, intensity, lenses: L,
+    conditions: [...new Set(conditions)].slice(0, 5),
+    changeMind: [...new Set(changeMind)].slice(0, 5).concat(changeMind.length ? [] : ["Independent validation of the proposal's key assumptions."])
+  };
+}
+
+/* ---------- Full AI challenge in the visitor's own Claude account ---------- */
+
+const CLAUDE_PROMPT = `You are the Board Devil's Advocate. Below is a proposal that management intends to bring to a board of directors. Your only job is to challenge it, rigorously and fairly, before the meeting.
+
+Rules:
+- Do not recommend approval or rejection. The vote belongs to the board.
+- Be independent of the sponsor. Do not soften findings because the proposal is polished, the sponsor is senior, or the deadline is close.
+- Challenge the reasoning, never the people. If part of the proposal is well supported, say so briefly.
+- Be specific. Every finding must point to a number, claim, assumption, or absence in the proposal.
+- Never invent facts about the company. Label general knowledge as general and do not fabricate statistics.
+
+Write a challenge brief with:
+1. Headline: one sentence naming the single most important thing the board should test.
+2. Challenge intensity: High, Elevated or Moderate.
+3. Eight lenses, in order: Premise, Outside view, Evidence, Alternatives, Downside, Incentives, Execution, Pre-mortem. For each: severity (High, Medium, Low), a two or three sentence finding, and one "Ask in the room" question a director could use verbatim.
+4. Conditions a prudent board might attach if it approves (3 to 5).
+5. What would change this analysis (3 to 5).
+
+PROPOSAL:
+`;
+
+const EXAMPLE = `Proposal: Consolidate our three regional warehouses into one automated national distribution center.
+
+Ask: $65M capital expenditure over two years, plus a 15-year lease on a new site. The vendor's automation system cuts picking labor by 55% and we expect $18M in annual savings from year three, a payback of under four years.
+
+Scope: All three existing warehouses close within 18 months and 240 roles are made redundant. The landlord's offer on the new site expires at the end of this quarter, and a competitor is reportedly looking at the same location.
+
+The COO will oversee the program alongside the current ERP upgrade.`;
+
+document.getElementById("example").addEventListener("click", () => {
+  document.getElementById("p-text").value = EXAMPLE;
+  document.getElementById("status").textContent = "";
+});
+
+document.getElementById("run").addEventListener("click", () => {
+  const text = document.getElementById("p-text").value.trim();
+  const status = document.getElementById("status");
+  const out = document.getElementById("live-out");
+  if (text.length < 40) { status.textContent = "Paste a proposal of at least a few sentences, or load the example."; return; }
+  status.textContent = text.length < 300 ? "Short proposals produce thinner briefs. Add the numbers, timeline and owner for a sharper challenge." : "";
+  out.innerHTML = `<div class="card brief">${renderBrief(challenge(text), "Instant brief: generated in your browser by pattern checks against the eight lenses. For a fully reasoned challenge, use Run the full challenge in Claude.")}</div>`;
+  out.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+document.getElementById("claude").addEventListener("click", async () => {
+  const text = document.getElementById("p-text").value.trim();
+  const status = document.getElementById("status");
+  if (text.length < 40) { status.textContent = "Paste a proposal first, or load the example."; return; }
+  const prompt = CLAUDE_PROMPT + text;
+  let copied = false;
+  try { await navigator.clipboard.writeText(prompt); copied = true; } catch (e) {}
+  const url = prompt.length < 6000 ? "https://claude.ai/new?q=" + encodeURIComponent(prompt) : "https://claude.ai/new";
+  window.open(url, "_blank", "noopener");
+  status.textContent = copied
+    ? "Opening Claude with the challenge prompt. It is also on your clipboard; if the message box is empty, just paste."
+    : "Opening Claude. If the message box is empty, copy your proposal and the prompt from the README.";
+});
+</script>
+</body>
+</html>
