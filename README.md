@@ -55,9 +55,15 @@ The demo ships with three fictional proposals (an acquisition, an AI customer-se
 - **Challenge instantly** runs a rules-based engine entirely in your browser. It checks the proposal against the eight lenses (unsourced figures, missing alternatives, irreversible commitments, deadline pressure, unclear ownership and more) and produces a brief in the same format. Nothing you paste leaves the page.
 - **Run the full challenge in Claude** opens Claude in your own account with the challenger prompt and your proposal filled in, for a fully reasoned brief.
 
+Every brief has two buttons for taking it into the meeting: **Print the questions for the room** produces a one-page sheet with the eight questions, the conditions and what would change the analysis, and nothing else; **Copy questions as text** puts the same content on your clipboard for notes or an email to fellow directors.
+
 Please do not paste confidential board material into a public demo.
 
 To run locally, open `index.html` in any browser. No build step.
+
+## In practice
+
+I have sat on the other side of this. At iHeartMedia I owned acquisitions from the deal thesis through diligence to the post-close synergy number, and I presented them to the board as the accountable owner. What I brought to that work was a product lens, and it is the lens I most rarely saw a board apply. Not whether the numbers hold, but where the thing fits: where this company would sit in our ecosystem on day one, which of our customers and partners would notice and why they would care, and how, mechanically, owning it creates value that licensing or partnering would not. A synergy model answers none of those questions. It assumes them. The eight lenses here ask for the premise and the evidence behind it, which is where those questions surface. If I added a ninth it would be Fit. The challenger exists because, in my experience, the sponsor is the last person in the room able to ask it.
 
 ## About
 

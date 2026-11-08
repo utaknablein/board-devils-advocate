@@ -141,6 +141,30 @@
     background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 11px 20px;
   }
   .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn.small { padding: 8px 14px; font-size: 13px; }
+  .take-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  #print-sheet { display: none; }
+
+  /* One-page question sheet for the boardroom. Only #print-sheet prints. */
+  @media print {
+    @page { margin: 16mm; }
+    body > *:not(#print-sheet) { display: none !important; }
+    body { background: #fff; color: #111; font-size: 11pt; }
+    #print-sheet { display: block; }
+    #print-sheet .label { font-size: 9pt; text-transform: uppercase; letter-spacing: .1em; color: #1f4e79; font-weight: 600; }
+    #print-sheet h1 { font-family: Fraunces, Georgia, serif; font-size: 17pt; margin: 2pt 0 6pt; }
+    .ps-headline { font-size: 11.5pt; margin: 0 0 4pt; }
+    .ps-meta { font-size: 9pt; color: #555; margin: 0 0 10pt; }
+    .ps-questions { margin: 0; padding-left: 18pt; }
+    .ps-questions li { margin: 0 0 7pt; break-inside: avoid; }
+    .ps-lens { display: block; font-size: 9pt; color: #555; font-weight: 600; }
+    .ps-lens .sev { font-size: 8pt; padding: 1pt 6pt; border: 1px solid #bbb; border-radius: 999px; margin-left: 4pt; font-style: normal; color: #333; background: none; }
+    .ps-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt; margin-top: 10pt; break-inside: avoid; }
+    .ps-two h4 { margin: 0 0 4pt; font-size: 9pt; text-transform: uppercase; letter-spacing: .08em; color: #555; }
+    .ps-two ul { margin: 0; padding-left: 14pt; font-size: 10pt; }
+    .ps-two li { margin-bottom: 3pt; }
+    .ps-foot { margin-top: 12pt; padding-top: 6pt; border-top: 1px solid #ccc; font-size: 8.5pt; color: #555; }
+  }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; }
   .live-head { display: flex; justify-content: space-between; align-items: baseline; }
   .live-head label { margin-top: 0; }
@@ -346,7 +370,12 @@ const LEDGER = [
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-function renderBrief(b, note) {
+const BRIEFS = {}; // every rendered brief, keyed so its print and copy buttons find it
+let briefSeq = 0;
+
+function renderBrief(b, note, title) {
+  const id = ++briefSeq;
+  BRIEFS[id] = { b, title: title || "Proposal to the board" };
   const lenses = b.lenses.map((l, i) => `
     <div class="lens">
       <div class="lens-head"><h4><span>${String(i+1).padStart(2,"0")}</span>${esc(l.lens || LENSES[i])}</h4><span class="sev ${esc(l.severity)}">${esc(l.severity)}</span></div>
@@ -363,8 +392,57 @@ function renderBrief(b, note) {
       <div class="box"><h4>Conditions a prudent board might attach</h4><ul>${b.conditions.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></div>
       <div class="box"><h4>What would change this analysis</h4><ul>${b.changeMind.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></div>
     </div>
+    <div class="take-actions">
+      <button class="btn ghost small" type="button" data-print data-brief="${id}">Print the questions for the room</button>
+      <button class="btn ghost small" type="button" data-copy data-brief="${id}">Copy questions as text</button>
+    </div>
     <p class="note">${note ? esc(note) + " " : ""}The challenger does not recommend approval or rejection. The decision belongs to the board.</p>`;
 }
+
+/* ---------- Take it into the room: one-page question sheet ---------- */
+
+function questionsText(b, title) {
+  const lines = [`Questions for the board: ${title}`, "", b.headline, ""];
+  b.lenses.forEach((l, i) => lines.push(`${i + 1}. ${l.lens || LENSES[i]} (${l.severity}): ${l.question}`));
+  lines.push("", "Conditions a prudent board might attach:", ...b.conditions.map(c => `- ${c}`));
+  lines.push("", "What would change this analysis:", ...b.changeMind.map(c => `- ${c}`));
+  lines.push("", "Prepared with Board Devil's Advocate. The challenger does not recommend the vote; the decision belongs to the board.");
+  return lines.join("\n");
+}
+
+function printSheet(b, title) {
+  const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  document.getElementById("print-sheet").innerHTML = `
+    <div class="ps-head">
+      <div class="label">Questions for the room</div>
+      <h1>${esc(title)}</h1>
+      <p class="ps-headline">${esc(b.headline)}</p>
+      <p class="ps-meta">Challenge intensity: ${esc(b.intensity)} · Prepared ${esc(date)}</p>
+    </div>
+    <ol class="ps-questions">${b.lenses.map((l, i) => `
+      <li><span class="ps-lens">${esc(l.lens || LENSES[i])} <em class="sev ${esc(l.severity)}">${esc(l.severity)}</em></span>${esc(l.question)}</li>`).join("")}
+    </ol>
+    <div class="ps-two">
+      <div><h4>Conditions a prudent board might attach</h4><ul>${b.conditions.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>
+      <div><h4>What would change this analysis</h4><ul>${b.changeMind.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>
+    </div>
+    <p class="ps-foot">Board Devil's Advocate · utaknablein.github.io/board-devils-advocate · The challenger does not recommend the vote. The decision belongs to the board.</p>`;
+  if (window.gcEvent) window.gcEvent("bda-printed");
+  window.print();
+}
+
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-print],[data-copy]");
+  if (!btn) return;
+  const entry = BRIEFS[btn.dataset.brief];
+  if (!entry) return;
+  const { b, title } = entry;
+  if (btn.hasAttribute("data-print")) printSheet(b, title);
+  else {
+    try { await navigator.clipboard.writeText(questionsText(b, title)); btn.textContent = "Copied"; setTimeout(() => btn.textContent = "Copy questions as text", 1600); }
+    catch (err) { btn.textContent = "Copy failed; select the text instead"; }
+  }
+});
 
 function show(id) {
   const s = SAMPLES.find(x => x.id === id);
@@ -374,7 +452,7 @@ function show(id) {
     <h3>${esc(s.title)}</h3>
     <dl>${s.facts.map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
     <div class="ask"><b>Summary</b><p>${esc(s.summary)}</p></div>`;
-  document.getElementById("brief").innerHTML = renderBrief(s.brief);
+  document.getElementById("brief").innerHTML = renderBrief(s.brief, null, s.title);
 }
 
 document.getElementById("tabs").innerHTML = SAMPLES.map(s =>
@@ -588,7 +666,9 @@ document.getElementById("run").addEventListener("click", () => {
   const out = document.getElementById("live-out");
   if (text.length < 40) { status.textContent = "Paste a proposal of at least a few sentences, or load the example."; return; }
   status.textContent = text.length < 300 ? "Short proposals produce thinner briefs. Add the numbers, timeline and owner for a sharper challenge." : "";
-  out.innerHTML = `<div class="card brief">${renderBrief(challenge(text), "Instant brief: generated in your browser by pattern checks against the eight lenses. For a fully reasoned challenge, use Run the full challenge in Claude.")}</div>`;
+  let firstLine = text.split(/\n/)[0].replace(/^#+\s*/, "").trim();
+  if (firstLine.length > 90) firstLine = firstLine.slice(0, 90).replace(/\s+\S*$/, "") + "…";
+  out.innerHTML = `<div class="card brief">${renderBrief(challenge(text), "Instant brief: generated in your browser by pattern checks against the eight lenses. For a fully reasoned challenge, use Run the full challenge in Claude.", firstLine || "Your proposal")}</div>`;
   out.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
@@ -606,6 +686,7 @@ document.getElementById("claude").addEventListener("click", async () => {
     : "Opening Claude. If the message box is empty, copy your proposal and the prompt from the README.";
 });
 </script>
+<div id="print-sheet" aria-hidden="true"></div>
 <script data-goatcounter="https://utaknablein.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <script>
   // Count key actions as events in GoatCounter (no cookies, no personal data)
